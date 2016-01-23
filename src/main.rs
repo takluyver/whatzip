@@ -21,20 +21,13 @@ impl ArchiveType {
 }
 
 
-fn check_magic_number(f: &mut File, b: &[u8]) -> bool {
-    f.seek(io::SeekFrom::Start(0)).unwrap();
-    let mut buffer = vec![0; b.len()];
-    match f.read(&mut buffer) {
-        Ok(size) => {
-            if size < b.len() {
-                false
-            } else {
-                buffer == b
-            }
-        }
-        Err(_) => {
-            false
-        }
+fn check_magic_number(buf: &[u8], magic: &[u8]) -> bool {
+    if buf.len() < magic.len() {
+        false
+    } else if buf.starts_with(magic) {
+        true
+    } else {
+        false
     }
 }
 
@@ -61,10 +54,22 @@ fn check_zip(f: &mut File) -> bool {
 fn detect_archive(f: &mut File) -> ArchiveType {
     if check_zip(f) {
         ArchiveType::Zip
-    } else if check_magic_number(f, b"\x1f\x8b") {
-        ArchiveType::Gzip
     } else {
-        ArchiveType::Unknown
+        f.seek(io::SeekFrom::Start(0)).unwrap();
+        let mut buffer = vec![0; 32];
+        match f.read(&mut buffer) {
+            Ok(size) => {
+                let buf_read = &buffer[..size];
+                if check_magic_number(&buf_read, b"\x1f\x8b") {
+                    ArchiveType::Gzip
+                } else {
+                    ArchiveType::Unknown
+                }
+            }
+            Err(_) => {
+                ArchiveType::Unknown
+            }
+        }
     }
 }
 
