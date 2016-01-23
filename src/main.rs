@@ -7,6 +7,10 @@ use std::io::prelude::*;
 enum ArchiveType {
     Zip,
     Gzip,
+    Bzip2,
+    Xz,
+    Seven_z,
+    MSCabinet,
     Unknown,
 }
 
@@ -15,6 +19,10 @@ impl ArchiveType {
         match self {
             &ArchiveType::Zip => Some(".zip"),
             &ArchiveType::Gzip => Some(".gz"),
+            &ArchiveType::Bzip2 => Some(".bz2"),
+            &ArchiveType::Xz => Some(".xz"),
+            &ArchiveType::Seven_z => Some(".7z"),
+            &ArchiveType::MSCabinet => Some(".cab"),
             &ArchiveType::Unknown => None
         }
     }
@@ -51,6 +59,14 @@ fn detect_archive(f: &mut File) -> ArchiveType {
                 let buf_read = &buffer[..size];
                 if buf_read.starts_with(b"\x1f\x8b") {
                     ArchiveType::Gzip
+                } else if buf_read.starts_with(b"BZh") {
+                    ArchiveType::Bzip2
+                } else if buf_read.starts_with(b"\xfd7zXZ\0") {
+                    ArchiveType::Xz
+                } else if buf_read.starts_with(b"7z\xbc\xaf\x27\x1c") {
+                    ArchiveType::Seven_z
+                } else if buf_read.starts_with(b"MSCF") {
+                    ArchiveType::MSCabinet
                 } else {
                     ArchiveType::Unknown
                 }
