@@ -20,17 +20,6 @@ impl ArchiveType {
     }
 }
 
-
-fn check_magic_number(buf: &[u8], magic: &[u8]) -> bool {
-    if buf.len() < magic.len() {
-        false
-    } else if buf.starts_with(magic) {
-        true
-    } else {
-        false
-    }
-}
-
 fn check_zip(f: &mut File) -> bool {
     if f.seek(io::SeekFrom::End(-22)).is_err() {
         return false;
@@ -60,7 +49,7 @@ fn detect_archive(f: &mut File) -> ArchiveType {
         match f.read(&mut buffer) {
             Ok(size) => {
                 let buf_read = &buffer[..size];
-                if check_magic_number(&buf_read, b"\x1f\x8b") {
+                if buf_read.starts_with(b"\x1f\x8b") {
                     ArchiveType::Gzip
                 } else {
                     ArchiveType::Unknown
