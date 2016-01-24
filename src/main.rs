@@ -9,7 +9,7 @@ enum ArchiveType {
     Gzip,
     Bzip2,
     Xz,
-    Seven_z,
+    SevenZ,
     MSCabinet,
     Unknown,
 }
@@ -21,7 +21,7 @@ impl ArchiveType {
             &ArchiveType::Gzip => Some(".gz"),
             &ArchiveType::Bzip2 => Some(".bz2"),
             &ArchiveType::Xz => Some(".xz"),
-            &ArchiveType::Seven_z => Some(".7z"),
+            &ArchiveType::SevenZ => Some(".7z"),
             &ArchiveType::MSCabinet => Some(".cab"),
             &ArchiveType::Unknown => None
         }
@@ -64,7 +64,7 @@ fn detect_archive(f: &mut File) -> ArchiveType {
                 } else if buf_read.starts_with(b"\xfd7zXZ\0") {
                     ArchiveType::Xz
                 } else if buf_read.starts_with(b"7z\xbc\xaf\x27\x1c") {
-                    ArchiveType::Seven_z
+                    ArchiveType::SevenZ
                 } else if buf_read.starts_with(b"MSCF") {
                     ArchiveType::MSCabinet
                 } else {
