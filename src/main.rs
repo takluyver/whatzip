@@ -35,18 +35,28 @@ impl ArchiveType {
     }
 
     fn decompress_cmd(&self, filename: &str) -> String {
+        let f = escape_filename(filename);
         match self {
-            &ArchiveType::Zip => format!("unzip {}", filename),
-            &ArchiveType::Tar => format!("tar -xf {}", filename),
-            &ArchiveType::Gzip{tar: false} => format!("gunzip {}", filename),
-            &ArchiveType::Gzip{tar: true} => format!("tar -xzf {}", filename),
-            &ArchiveType::Bzip2{tar: false} => format!("bunzip2 {}", filename),
-            &ArchiveType::Bzip2{tar: true} => format!("tar -xjf {}", filename),
-            &ArchiveType::Xz => format!("xz -d {}", filename),
-            &ArchiveType::SevenZ => format!("7z x {}", filename),
-            &ArchiveType::MSCabinet => format!("cabextract {}", filename),
+            &ArchiveType::Zip => format!("unzip {}", f),
+            &ArchiveType::Tar => format!("tar -xf {}", f),
+            &ArchiveType::Gzip{tar: false} => format!("gunzip {}", f),
+            &ArchiveType::Gzip{tar: true} => format!("tar -xzf {}", f),
+            &ArchiveType::Bzip2{tar: false} => format!("bunzip2 {}", f),
+            &ArchiveType::Bzip2{tar: true} => format!("tar -xjf {}", f),
+            &ArchiveType::Xz => format!("xz -d {}", f),
+            &ArchiveType::SevenZ => format!("7z x {}", f),
+            &ArchiveType::MSCabinet => format!("cabextract {}", f),
         }
     }
+}
+
+fn escape_filename(s: &str) -> String {
+    for c in s.chars() {
+        if c == ' ' || c == '\t' {
+            return format!("\"{}\"", s.replace("\"", "\\\""));
+        }
+    }
+    s.to_string()
 }
 
 fn check_zip(f: &mut File) -> bool {
