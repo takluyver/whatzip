@@ -17,22 +17,20 @@ enum ArchiveType {
     Xz,
     SevenZ,
     MSCabinet,
-    Unknown,
 }
 
 impl ArchiveType {
-    fn typical_extension(&self) -> Option<&str> {
+    fn typical_extension(&self) -> &str {
         match self {
-            &ArchiveType::Zip => Some(".zip"),
-            &ArchiveType::Tar => Some(".tar"),
-            &ArchiveType::Gzip{tar: false} => Some(".gz"),
-            &ArchiveType::Gzip{tar: true} => Some(".tar.gz"),
-            &ArchiveType::Bzip2{tar: false} => Some(".bz2"),
-            &ArchiveType::Bzip2{tar: true} => Some(".tar.bz2"),
-            &ArchiveType::Xz => Some(".xz"),
-            &ArchiveType::SevenZ => Some(".7z"),
-            &ArchiveType::MSCabinet => Some(".cab"),
-            &ArchiveType::Unknown => None
+            &ArchiveType::Zip => ".zip",
+            &ArchiveType::Tar => ".tar",
+            &ArchiveType::Gzip{tar: false} => ".gz",
+            &ArchiveType::Gzip{tar: true} => ".tar.gz",
+            &ArchiveType::Bzip2{tar: false} => ".bz2",
+            &ArchiveType::Bzip2{tar: true} => ".tar.bz2",
+            &ArchiveType::Xz => ".xz",
+            &ArchiveType::SevenZ => ".7z",
+            &ArchiveType::MSCabinet => ".cab",
         }
     }
 }
@@ -72,13 +70,13 @@ fn check_tar(f: &mut Read) -> bool {
     }
 }
 
-fn detect_archive(f: &mut File) -> ArchiveType {
+fn detect_archive(f: &mut File) -> Option<ArchiveType> {
     if check_zip(f) {
-        ArchiveType::Zip
+        Some(ArchiveType::Zip)
     } else {
         f.seek(io::SeekFrom::Start(0)).unwrap();
         if check_tar(f) {
-            return ArchiveType::Tar
+            return Some(ArchiveType::Tar)
         }
         f.seek(io::SeekFrom::Start(0)).unwrap();
         let mut buffer = [0; 32];
@@ -88,25 +86,25 @@ fn detect_archive(f: &mut File) -> ArchiveType {
                 if buf_read.starts_with(b"\x1f\x8b") {
                     f.seek(io::SeekFrom::Start(0)).unwrap();
                     match GzDecoder::new(f) {
-                        Ok(mut d) => ArchiveType::Gzip{tar: check_tar(&mut d)},
-                        Err(_) => ArchiveType:: Unknown,
+                        Ok(mut d) => Some(ArchiveType::Gzip{tar: check_tar(&mut d)}),
+                        Err(_) => None,
                     }
                 } else if buf_read.starts_with(b"BZh") {
                     f.seek(io::SeekFrom::Start(0)).unwrap();
                     let mut d = BzDecompressor::new(f);
-                    return ArchiveType::Bzip2{tar: check_tar(&mut d)};
+                    return Some(ArchiveType::Bzip2{tar: check_tar(&mut d)});
                 } else if buf_read.starts_with(b"\xfd7zXZ\0") {
-                    ArchiveType::Xz
+                    Some(ArchiveType::Xz)
                 } else if buf_read.starts_with(b"7z\xbc\xaf\x27\x1c") {
-                    ArchiveType::SevenZ
+                    Some(ArchiveType::SevenZ)
                 } else if buf_read.starts_with(b"MSCF") {
-                    ArchiveType::MSCabinet
+                    Some(ArchiveType::MSCabinet)
                 } else {
-                    ArchiveType::Unknown
+                    None
                 }
             }
             Err(_) => {
-                ArchiveType::Unknown
+                None
             }
         }
     }
@@ -118,10 +116,11 @@ fn main() {
             match File::open(&s) {
                 Ok(mut f) => {
                     println!("OK");
-                    let at = detect_archive(&mut f);
-                    match at.typical_extension() {
-                        Some(ext) => println!("Detected {} file", ext),
-                        None => println!("Unknown file type")
+                    match detect_archive(&mut f) {
+                        None => println!("Unknown file type"),
+                        Some(at) => {
+                            println!("Detected {} file", at.typical_extension());
+                        }
                     }
                 },
                 Err(_) => {
