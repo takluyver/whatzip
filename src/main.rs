@@ -1,14 +1,17 @@
+extern crate flate2;
+
 use std::env;
 use std::process;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
+use flate2::read::GzDecoder;
 
 enum ArchiveType {
     Zip,
     Tar,
-    Gzip,
-    Bzip2,
+    Gzip {tar: bool},
+    Bzip2 {tar: bool},
     Xz,
     SevenZ,
     MSCabinet,
@@ -20,8 +23,10 @@ impl ArchiveType {
         match self {
             &ArchiveType::Zip => Some(".zip"),
             &ArchiveType::Tar => Some(".tar"),
-            &ArchiveType::Gzip => Some(".gz"),
-            &ArchiveType::Bzip2 => Some(".bz2"),
+            &ArchiveType::Gzip{tar: false} => Some(".gz"),
+            &ArchiveType::Gzip{tar: true} => Some(".tar.gz"),
+            &ArchiveType::Bzip2{tar: false} => Some(".bz2"),
+            &ArchiveType::Bzip2{tar: true} => Some(".tar.bz2"),
             &ArchiveType::Xz => Some(".xz"),
             &ArchiveType::SevenZ => Some(".7z"),
             &ArchiveType::MSCabinet => Some(".cab"),
@@ -79,10 +84,18 @@ fn detect_archive(f: &mut File) -> ArchiveType {
             Ok(size) => {
                 let buf_read = &buffer[..size];
                 if buf_read.starts_with(b"\x1f\x8b") {
-                    ArchiveType::Gzip
-                } else if buf_read.starts_with(b"BZh") {
-                    ArchiveType::Bzip2
-                } else if buf_read.starts_with(b"\xfd7zXZ\0") {
+                    f.seek(io::SeekFrom::Start(0)).unwrap();
+                    match GzDecoder::new(f) {
+                        Ok(mut d) => {
+                            return ArchiveType::Gzip{tar: check_tar(&mut d)};
+                        }
+                        Err(_) => (),
+                    }
+                }
+                if buf_read.starts_with(b"BZh") {
+                    return ArchiveType::Bzip2{tar: false};
+                }
+                if buf_read.starts_with(b"\xfd7zXZ\0") {
                     ArchiveType::Xz
                 } else if buf_read.starts_with(b"7z\xbc\xaf\x27\x1c") {
                     ArchiveType::SevenZ
