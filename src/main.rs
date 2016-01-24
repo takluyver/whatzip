@@ -6,6 +6,7 @@ use std::io::prelude::*;
 
 enum ArchiveType {
     Zip,
+    Tar,
     Gzip,
     Bzip2,
     Xz,
@@ -18,6 +19,7 @@ impl ArchiveType {
     fn typical_extension(&self) -> Option<&str> {
         match self {
             &ArchiveType::Zip => Some(".zip"),
+            &ArchiveType::Tar => Some(".tar"),
             &ArchiveType::Gzip => Some(".gz"),
             &ArchiveType::Bzip2 => Some(".bz2"),
             &ArchiveType::Xz => Some(".xz"),
@@ -48,12 +50,31 @@ fn check_zip(f: &mut File) -> bool {
     true
 }
 
+fn check_tar(f: &mut Read) -> bool {
+    let mut buf = [0; 265];
+    match f.read(&mut buf) {
+        Ok(n) => {
+            if n < 263 {
+                false
+            } else {
+                let sample = &buf[257..n];
+                sample.starts_with(b"ustar\0") || sample.starts_with(b"ustar\x20\x20\0")
+            }
+        },
+        Err(_) => false
+    }
+}
+
 fn detect_archive(f: &mut File) -> ArchiveType {
     if check_zip(f) {
         ArchiveType::Zip
     } else {
         f.seek(io::SeekFrom::Start(0)).unwrap();
-        let mut buffer = vec![0; 32];
+        if check_tar(f) {
+            return ArchiveType::Tar
+        }
+        f.seek(io::SeekFrom::Start(0)).unwrap();
+        let mut buffer = [0; 32];
         match f.read(&mut buffer) {
             Ok(size) => {
                 let buf_read = &buffer[..size];
