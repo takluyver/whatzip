@@ -33,6 +33,20 @@ impl ArchiveType {
             &ArchiveType::MSCabinet => ".cab",
         }
     }
+
+    fn decompress_cmd(&self, filename: &str) -> String {
+        match self {
+            &ArchiveType::Zip => format!("unzip {}", filename),
+            &ArchiveType::Tar => format!("tar -xf {}", filename),
+            &ArchiveType::Gzip{tar: false} => format!("gunzip {}", filename),
+            &ArchiveType::Gzip{tar: true} => format!("tar -xzf {}", filename),
+            &ArchiveType::Bzip2{tar: false} => format!("bunzip2 {}", filename),
+            &ArchiveType::Bzip2{tar: true} => format!("tar -xjf {}", filename),
+            &ArchiveType::Xz => format!("xz -d {}", filename),
+            &ArchiveType::SevenZ => format!("7z x {}", filename),
+            &ArchiveType::MSCabinet => format!("cabextract {}", filename),
+        }
+    }
 }
 
 fn check_zip(f: &mut File) -> bool {
@@ -120,6 +134,8 @@ fn main() {
                         None => println!("Unknown file type"),
                         Some(at) => {
                             println!("Detected {} file", at.typical_extension());
+                            println!("To unpack, run:");
+                            println!("  {}", at.decompress_cmd(&s));
                         }
                     }
                 },
